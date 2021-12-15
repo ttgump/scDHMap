@@ -86,7 +86,7 @@ class EarlyStopping:
 
 class scDHMap(nn.Module):
     def __init__(self, input_dim, encodeLayer=[], decodeLayer=[], batch_size=512,
-            activation="relu", z_dim=2, alpha=1., beta=1., perplexity=[30.], 
+            activation="relu", z_dim=2, alpha=1., beta=1., sigma=0.01, perplexity=[30.], 
             prob=0., device="cuda"):
         super(scDHMap, self).__init__()
         self.input_dim = input_dim
@@ -95,16 +95,13 @@ class scDHMap(nn.Module):
         self.batch_size = batch_size
         self.alpha = alpha
         self.beta = beta
+        self.sigma = sigma
         self.perplexity = perplexity
         self.prob = prob
         self.encoder = buildNetwork([input_dim]+encodeLayer, type="encode", activation=activation, prob=prob)
-        self.decoder = buildNetwork([z_dim+1]+decodeLayer, type="decode", activation=activation, prob=prob)
         self.enc_mu = nn.Linear(encodeLayer[-1], z_dim)
         self.enc_sigma = nn.Sequential(nn.Linear(encodeLayer[-1], z_dim), nn.Softplus())
-        self.dec_mean = nn.Sequential(nn.Linear(decodeLayer[-1], input_dim), MeanAct())
-        self.dec_disp = nn.Sequential(nn.Linear(decodeLayer[-1], input_dim), DispAct())
-        self.dec_pi = nn.Sequential(nn.Linear(decodeLayer[-1], input_dim), nn.Sigmoid())
-
+        
         self.device = device
 
         self.zinb_loss = ZINBLoss().to(self.device)
@@ -128,12 +125,7 @@ class scDHMap(nn.Module):
         q_z = HyperbolicWrappedNorm(z_mu, z_sigma_square)
         z = q_z.sample()
 
-        h = self.decoder(z)
-        mean = self.dec_mean(h)
-        disp = self.dec_disp(h)
-        pi = self.dec_pi(h)
-
-        return q_z, z, z_mu, mean, disp, pi
+        return q_z, z, z_mu
 
     def _polar_project(self, x):
         x_norm = torch.norm(x, p=2, dim=1, keepdim=True)
@@ -166,12 +158,8 @@ class scDHMap(nn.Module):
         return torch.mean(kl)
 
     def encodeBatch(self, X):
-        """
-        Output latent representations and project to 2D Poincare ball for visualization
-        """
-
         self.to(self.device)
-
+        
         encoded = []
         self.eval()
         num = X.shape[0]
@@ -179,7 +167,7 @@ class scDHMap(nn.Module):
         for batch_idx in range(num_batch):
             xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
             inputs = Variable(xbatch)
-            _, _, z, _, _, _ = self.aeForward(inputs)
+            _, _, z = self.aeForward(inputs)
             z = lorentz2poincare(z)
             encoded.append(z.data)
 
@@ -187,88 +175,7 @@ class scDHMap(nn.Module):
         self.train()
         return encoded
 
-    def decodeBatch(self, X):
-        """
-        Output denoised counts
-        """
-
-        self.to(self.device)
-
-        decoded = []
-        self.eval()
-        num = X.shape[0]
-        num_batch = int(math.ceil(1.0*X.shape[0]/self.batch_size))
-        for batch_idx in range(num_batch):
-            xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
-            inputs = Variable(xbatch)
-            _, _, _, mean, _, _ = self.aeForward(inputs)
-            decoded.append(mean.data)
-
-        decoded = torch.cat(decoded, dim=0)
-        self.train()
-        return decoded
-
-    def pretrain_autoencoder(self, X, X_raw, size_factor, lr=0.001, pretrain_iter=400, ae_save=True, ae_weights="AE_weights.pth.tar"):
-        """
-        Pretrain the model with the ZINB hyperbolic VAE only.
-
-        Parameters:
-        -----------
-        X: array_like, shape (n_samples, n_features)
-            The normalized raw counts
-        X_raw: array_like, shape (n_samples, n_features)
-            The raw counts, which need for the ZINB loss
-        size_factor: array_like, shape (n_samples)
-            The size factor of each sample, which need for the ZINB loss
-        lr: float, defalut = 0.001
-            Learning rate for the opitimizer
-        pretrain_iter: int, default = 400
-            Pretrain iterations
-        ae_save: bool, default = True
-            Whether to save the pretrained weights
-        ae_weights: str
-            Directory name to save the model weights
-        """
-
-        self.to(self.device)
-        num = X.shape[0]
-        dataset = TensorDataset(torch.Tensor(X), torch.Tensor(X_raw), torch.Tensor(size_factor))
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
-
-        print("Pretraining stage")
-        for epoch in range(pretrain_iter):
-            loss_zinb_val = 0
-            loss_kld_val = 0
-            loss_val = 0
-            for batch_idx, (x_batch, x_raw_batch, sf_batch) in enumerate(dataloader):
-                x_tensor = Variable(x_batch).to(self.device)
-                x_raw_tensor = Variable(x_raw_batch).to(self.device)
-                sf_tensor = Variable(sf_batch).to(self.device)
-                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
-                loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
-                loss_kld = self.KLD(q_z, z)
-                loss = loss_zinb + loss_kld
-                self.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                loss_zinb_val += loss_zinb.item() * len(x_batch)
-                loss_kld_val += loss_kld.item() * len(x_batch)
-                loss_val += loss.item() * len(x_batch)
-            loss_zinb_val = loss_zinb_val/num
-            loss_kld_val = loss_kld_val/num
-            loss_val = loss_val/num
-
-            print('Pretraining epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_kld_val))
-
-        if ae_save:
-            torch.save({'ae_state_dict': self.state_dict(),
-                    'optim_adam_state_dict': optimizer.state_dict()}, ae_weights)
-
-
-    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=100, patience=150, save_dir=""):
+    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.01, maxiter=500, minimum_iter=100, patience=20, save_dir=""):
         """
         Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
 
@@ -314,10 +221,8 @@ class scDHMap(nn.Module):
         early_stopping = EarlyStopping(patience=patience, outdir=save_dir)
 
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
-        loss_norm_val_vec = []
 
         for epoch in range(maxiter):
-            loss_zinb_val = 0
             loss_tsne_val = 0
             loss_kld_val = 0
             loss_val = 0
@@ -339,29 +244,26 @@ class scDHMap(nn.Module):
                 p_batch = torch.tensor(p_batch)
                 p_tensor = Variable(p_batch).to(self.device)
 
-                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
+                q_z, z, z_mu = self.aeForward(x_tensor)
 
-                loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
                 loss_tsne = self.tsne_repel(z_mu, p_tensor)
                 loss_kld = self.KLD(q_z, z)
 
-                loss = loss_zinb + self.alpha * loss_tsne + self.beta * loss_kld 
+                loss = self.alpha * loss_tsne + self.beta * loss_kld 
 
                 self.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                loss_zinb_val += loss_zinb.item() * len(x_batch)
                 loss_tsne_val += loss_tsne.item() * len(x_batch)
                 loss_kld_val += loss_kld.item() * len(x_batch)
                 loss_val += loss.item() * len(x_batch)
 
-            loss_zinb_val = loss_zinb_val/num
             loss_tsne_val = loss_tsne_val/num
             loss_kld_val = loss_kld_val/num
             loss_val = loss_val/num
 
-            print('Training epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_tsne_val, loss_kld_val))
+            print('Training epoch {}, Total loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_tsne_val, loss_kld_val))
 
             if X_true_pca is not None and epoch > 0 and epoch % 40 == 0:
                 epoch_latent = self.encodeBatch(X.to(self.device)).data.cpu().numpy()

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-from scDHMap import scDHMap
+from scDHMap_no_decoder import scDHMap
 from embedding_quality_score import get_quality_metrics
 import numpy as np
 import collections
@@ -39,24 +39,17 @@ if __name__ == "__main__":
     parser.add_argument('--patience', default=150, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('--alpha', default=1000., type=float,
-                        help='coefficient of the t-SNE loss')
+                        help='coefficient of the SNE loss')
     parser.add_argument('--beta', default=10., type=float,
                         help='coefficient of the KLD loss')
-    parser.add_argument('--prob', default=0., type=float,
+    parser.add_argument('--prob', default=0, type=float,
                         help='dropout probability')
     parser.add_argument('--perplexity', nargs="+", default=[30.], type=float)
-    parser.add_argument('--ae_weights', default=None,
-                        help='file name of pretrained model weight; if None, will pretrain from scratch')
-    parser.add_argument('--ae_weights_file', default="AE_weights.pth.tar",
-                        help='file name to save pretrain model weights')
-    parser.add_argument('--save_dir', default='ES_model/',
-                        help='directory to save model weights')
-    parser.add_argument('--pretrain_latent_file', default='ae_latent.txt',
-                        help='file name to save latent embedding after pretrain')
-    parser.add_argument('--final_latent_file', default='final_latent.txt',
-                        help='file name to save latent embedding after train the whole model')
-    parser.add_argument('--final_mean_file', default='denoised_mean.txt',
-                        help='file name to save denoised counts after train the whole model')
+    parser.add_argument('--ae_weights', default=None)
+    parser.add_argument('--ae_weights_file', default="AE_weights.pth.tar")
+    parser.add_argument('--save_dir', default='ES_model/')
+    parser.add_argument('--pretrain_latent_file', default='ae_latent.txt')
+    parser.add_argument('--final_latent_file', default='final_latent.txt')
     parser.add_argument('--device', default='cuda')
 
     args = parser.parse_args()
@@ -68,7 +61,6 @@ if __name__ == "__main__":
 
     importantGenes = geneSelection(x, n=args.select_genes, plot=False)
     x = x[:, importantGenes]
-    x_true = x_true[:, importantGenes]
 
     # Preprocessing scRNA-seq read counts matrix for the autoencoder
     adata0 = sc.AnnData(x)
@@ -101,31 +93,12 @@ if __name__ == "__main__":
 
     t0 = time()
 
-    # Pretrain
-    if args.ae_weights is None:
-        model.pretrain_autoencoder(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), 
-            lr=args.lr, pretrain_iter=args.pretrain_iter, ae_save=True, ae_weights=args.ae_weights_file)
-    else:
-        if os.path.isfile(args.ae_weights):
-            print("==> loading checkpoint '{}'".format(args.ae_weights))
-            checkpoint = torch.load(args.ae_weights)
-            model.load_state_dict(checkpoint['ae_state_dict'])
-        else:
-            print("==> no checkpoint found at '{}'".format(args.ae_weights))
-            raise ValueError
-
-    print('Pretraining time: %d seconds.' % int(time() - t0))
-    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
-    np.savetxt(args.pretrain_latent_file, ae_latent, delimiter=",")
-
-    # Train the model with the hyberbolic t-SNE regularization
-    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), None,
+    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), X_true_pca.astype(np.float64),
                     lr=args.lr, maxiter=args.maxiter, minimum_iter=args.minimum_iter,
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
 
     final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
-    np.savetxt(args.final_latent_file, final_latent, delimiter=",")
+    QM_ae = get_quality_metrics(X_true_pca, final_latent, distance='P')
 
-    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
-    np.savetxt(args.final_mean_file, final_mean, delimiter=",")
+    np.savetxt(args.final_latent_file, final_latent, delimiter=",")

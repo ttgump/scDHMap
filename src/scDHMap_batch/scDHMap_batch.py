@@ -85,11 +85,12 @@ class EarlyStopping:
 
 
 class scDHMap(nn.Module):
-    def __init__(self, input_dim, encodeLayer=[], decodeLayer=[], batch_size=512,
+    def __init__(self, input_dim, n_batch, encodeLayer=[], decodeLayer=[], batch_size=512,
             activation="relu", z_dim=2, alpha=1., beta=1., perplexity=[30.], 
             prob=0., device="cuda"):
         super(scDHMap, self).__init__()
         self.input_dim = input_dim
+        self.n_batch = n_batch
         self.z_dim = z_dim
         self.activation = activation
         self.batch_size = batch_size
@@ -97,8 +98,8 @@ class scDHMap(nn.Module):
         self.beta = beta
         self.perplexity = perplexity
         self.prob = prob
-        self.encoder = buildNetwork([input_dim]+encodeLayer, type="encode", activation=activation, prob=prob)
-        self.decoder = buildNetwork([z_dim+1]+decodeLayer, type="decode", activation=activation, prob=prob)
+        self.encoder = buildNetwork([input_dim+n_batch]+encodeLayer, type="encode", activation=activation, prob=prob)
+        self.decoder = buildNetwork([z_dim+1+n_batch]+decodeLayer, type="decode", activation=activation, prob=prob)
         self.enc_mu = nn.Linear(encodeLayer[-1], z_dim)
         self.enc_sigma = nn.Sequential(nn.Linear(encodeLayer[-1], z_dim), nn.Softplus())
         self.dec_mean = nn.Sequential(nn.Linear(decodeLayer[-1], input_dim), MeanAct())
@@ -119,8 +120,8 @@ class scDHMap(nn.Module):
         model_dict.update(pretrained_dict) 
         self.load_state_dict(model_dict)
 
-    def aeForward(self, x):
-        h = self.encoder(x)
+    def aeForward(self, x, y):
+        h = self.encoder(torch.cat([x, y], dim=-1))
 
         tmp = self.enc_mu(h)
         z_mu = self._polar_project(tmp)
@@ -128,7 +129,7 @@ class scDHMap(nn.Module):
         q_z = HyperbolicWrappedNorm(z_mu, z_sigma_square)
         z = q_z.sample()
 
-        h = self.decoder(z)
+        h = self.decoder(torch.cat([z, y], dim=-1))
         mean = self.dec_mean(h)
         disp = self.dec_disp(h)
         pi = self.dec_pi(h)
@@ -165,21 +166,23 @@ class scDHMap(nn.Module):
         kl = q_z.log_prob(z) - p_z.log_prob(z)
         return torch.mean(kl)
 
-    def encodeBatch(self, X):
+    def encodeBatch(self, X, Y):
         """
         Output latent representations and project to 2D Poincare ball for visualization
         """
 
         self.to(self.device)
-
+        
         encoded = []
         self.eval()
         num = X.shape[0]
         num_batch = int(math.ceil(1.0*X.shape[0]/self.batch_size))
         for batch_idx in range(num_batch):
             xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
-            inputs = Variable(xbatch)
-            _, _, z, _, _, _ = self.aeForward(inputs)
+            ybatch = Y[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
+            inputs1 = Variable(xbatch)
+            inputs2 = Variable(ybatch)
+            _, _, z, _, _, _ = self.aeForward(inputs1, inputs2)
             z = lorentz2poincare(z)
             encoded.append(z.data)
 
@@ -187,7 +190,7 @@ class scDHMap(nn.Module):
         self.train()
         return encoded
 
-    def decodeBatch(self, X):
+        def decodeBatch(self, X, Y):
         """
         Output denoised counts
         """
@@ -200,15 +203,17 @@ class scDHMap(nn.Module):
         num_batch = int(math.ceil(1.0*X.shape[0]/self.batch_size))
         for batch_idx in range(num_batch):
             xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
-            inputs = Variable(xbatch)
-            _, _, _, mean, _, _ = self.aeForward(inputs)
+            ybatch = Y[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
+            inputs1 = Variable(xbatch)
+            inputs2 = Variable(ybatch)
+            _, _, _, mean, _, _ = self.aeForward(inputs1, inputs2)
             decoded.append(mean.data)
 
         decoded = torch.cat(decoded, dim=0)
         self.train()
         return decoded
 
-    def pretrain_autoencoder(self, X, X_raw, size_factor, lr=0.001, pretrain_iter=400, ae_save=True, ae_weights="AE_weights.pth.tar"):
+    def pretrain_autoencoder(self, X, X_raw, size_factor, Y, lr=0.01, pretrain_iter=400, ae_save=True, ae_weights="AE_weights.pth.tar"):
         """
         Pretrain the model with the ZINB hyperbolic VAE only.
 
@@ -220,6 +225,8 @@ class scDHMap(nn.Module):
             The raw counts, which need for the ZINB loss
         size_factor: array_like, shape (n_samples)
             The size factor of each sample, which need for the ZINB loss
+        Y: array_like, shape (n_samples, n_batch)
+            One-hot encoded batch IDs
         lr: float, defalut = 0.001
             Learning rate for the opitimizer
         pretrain_iter: int, default = 400
@@ -232,7 +239,7 @@ class scDHMap(nn.Module):
 
         self.to(self.device)
         num = X.shape[0]
-        dataset = TensorDataset(torch.Tensor(X), torch.Tensor(X_raw), torch.Tensor(size_factor))
+        dataset = TensorDataset(torch.Tensor(X), torch.Tensor(X_raw), torch.Tensor(size_factor), torch.Tensor(Y))
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
@@ -242,11 +249,12 @@ class scDHMap(nn.Module):
             loss_zinb_val = 0
             loss_kld_val = 0
             loss_val = 0
-            for batch_idx, (x_batch, x_raw_batch, sf_batch) in enumerate(dataloader):
+            for batch_idx, (x_batch, x_raw_batch, sf_batch, y_batch) in enumerate(dataloader):
                 x_tensor = Variable(x_batch).to(self.device)
                 x_raw_tensor = Variable(x_raw_batch).to(self.device)
                 sf_tensor = Variable(sf_batch).to(self.device)
-                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
+                y_tensor = Variable(y_batch).to(self.device)
+                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor, y_tensor)
                 loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
                 loss_kld = self.KLD(q_z, z)
                 loss = loss_zinb + loss_kld
@@ -268,7 +276,7 @@ class scDHMap(nn.Module):
                     'optim_adam_state_dict': optimizer.state_dict()}, ae_weights)
 
 
-    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=100, patience=150, save_dir=""):
+    def train_model(self, X, X_raw, size_factor, Y, X_pca, X_true_pca=None, lr=0.01, maxiter=500, minimum_iter=100, patience=20, save_dir=""):
         """
         Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
 
@@ -280,6 +288,8 @@ class scDHMap(nn.Module):
             The raw counts, which need for the ZINB loss
         size_factor: array_like, shape (n_samples)
             The size factor of each sample, which need for the ZINB loss
+        Y: array_like, shape (n_samples, n_batch)
+            One-hot encoded batch IDs
         X_pca: array_like, shape (n_samples, n_PCs)
             The principal components of the analytic Pearson residual normalized raw counts
         X_true_pca: array_like, shape (n_samples, n_PCs)
@@ -301,6 +311,8 @@ class scDHMap(nn.Module):
         X = torch.tensor(X)
         X_raw = torch.tensor(X_raw)
         size_factor = torch.tensor(size_factor)
+        Y_vector = np.argmax(Y, axis=1).astype(int)
+        Y = torch.tensor(Y)
         num = X.shape[0]
         sample_indices = np.arange(num)
         num_batch = int(math.ceil(1.0*num/self.batch_size))
@@ -328,9 +340,11 @@ class scDHMap(nn.Module):
                 x_batch = X[batch_indices]
                 x_raw_batch = X_raw[batch_indices]
                 sf_batch = size_factor[batch_indices]
+                y_batch = Y[batch_indices]
                 x_tensor = Variable(x_batch).to(self.device)
                 x_raw_tensor = Variable(x_raw_batch).to(self.device)
                 sf_tensor = Variable(sf_batch).to(self.device)
+                y_tensor = Variable(y_batch).to(self.device)
 
                 dist_X_pca_batch = dist_X_pca[batch_indices][:, batch_indices]
                 dist_X_pca_tensor = torch.tensor(dist_X_pca_batch)
@@ -339,7 +353,7 @@ class scDHMap(nn.Module):
                 p_batch = torch.tensor(p_batch)
                 p_tensor = Variable(p_batch).to(self.device)
 
-                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
+                q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor, y_tensor)
 
                 loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
                 loss_tsne = self.tsne_repel(z_mu, p_tensor)
@@ -364,8 +378,10 @@ class scDHMap(nn.Module):
             print('Training epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_tsne_val, loss_kld_val))
 
             if X_true_pca is not None and epoch > 0 and epoch % 40 == 0:
-                epoch_latent = self.encodeBatch(X.to(self.device)).data.cpu().numpy()
-                QM_ae = get_quality_metrics(X_true_pca, epoch_latent, distance='P')
+                epoch_latent = self.encodeBatch(X.to(self.device), Y.to(self.device)).data.cpu().numpy()
+                for b in range(self.n_batch):
+                    print("Batch", b)
+                    get_quality_metrics(X_true_pca[Y_vector==b], epoch_latent[Y_vector==b], distance='P')
 
             if epoch+1 >= minimum_iter:
                 early_stopping(loss_tsne_val, self)
