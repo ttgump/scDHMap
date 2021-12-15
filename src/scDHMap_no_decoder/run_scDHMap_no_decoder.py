@@ -52,7 +52,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # X is an array of the shape n_samples by n_features
-    data_mat = h5py.File(args.data_file)
+    data_mat = h5py.File(args.data_file, 'r')
     x = np.array(data_mat['X'])
     data_mat.close()
 

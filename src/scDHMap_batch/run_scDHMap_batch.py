@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # X is an array of the shape n_samples by n_features
     # Y is an one-hot encoded batch ID
-    data_mat = h5py.File(args.data_file)
+    data_mat = h5py.File(args.data_file, 'r')
     x = np.array(data_mat['X'])
     y = np.array(data_mat['Y']).astype(int)
     data_mat.close()
