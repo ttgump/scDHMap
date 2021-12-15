@@ -12,11 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from scDHMap_batch import scDHMap
 from embedding_quality_score import get_quality_metrics
 import numpy as np
-import collections
-from sklearn import metrics
 from single_cell_tools import geneSelection
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
 import h5py
 import scanpy as sc
 from preprocess import read_dataset, normalize, pearson_residuals

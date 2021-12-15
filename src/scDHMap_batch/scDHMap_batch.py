@@ -190,7 +190,7 @@ class scDHMap(nn.Module):
         self.train()
         return encoded
 
-        def decodeBatch(self, X, Y):
+    def decodeBatch(self, X, Y):
         """
         Output denoised counts
         """
@@ -276,7 +276,7 @@ class scDHMap(nn.Module):
                     'optim_adam_state_dict': optimizer.state_dict()}, ae_weights)
 
 
-    def train_model(self, X, X_raw, size_factor, Y, X_pca, X_true_pca=None, lr=0.01, maxiter=500, minimum_iter=100, patience=20, save_dir=""):
+    def train_model(self, X, X_raw, size_factor, Y, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=0, patience=20, save_dir=""):
         """
         Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
 

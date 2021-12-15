@@ -268,7 +268,7 @@ class scDHMap(nn.Module):
                     'optim_adam_state_dict': optimizer.state_dict()}, ae_weights)
 
 
-    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=100, patience=150, save_dir=""):
+    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=0, patience=150, save_dir=""):
         """
         Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
 

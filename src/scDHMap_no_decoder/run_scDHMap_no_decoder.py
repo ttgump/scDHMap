@@ -12,11 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from scDHMap_no_decoder import scDHMap
 from embedding_quality_score import get_quality_metrics
 import numpy as np
-import collections
-from sklearn import metrics
 from single_cell_tools import geneSelection
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
 import h5py
 import scanpy as sc
 from preprocess import read_dataset, normalize, pearson_residuals
@@ -93,7 +90,7 @@ if __name__ == "__main__":
 
     t0 = time()
 
-    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), X_true_pca.astype(np.float64),
+    model.train_model(adata.X.astype(np.float64), X_pca.astype(np.float64), None,
                     lr=args.lr, maxiter=args.maxiter, minimum_iter=args.minimum_iter,
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))

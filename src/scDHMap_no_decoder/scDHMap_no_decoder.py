@@ -158,8 +158,12 @@ class scDHMap(nn.Module):
         return torch.mean(kl)
 
     def encodeBatch(self, X):
+        """
+        Output latent representations and project to 2D Poincare ball for visualization
+        """
+
         self.to(self.device)
-        
+
         encoded = []
         self.eval()
         num = X.shape[0]
@@ -175,7 +179,7 @@ class scDHMap(nn.Module):
         self.train()
         return encoded
 
-    def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.01, maxiter=500, minimum_iter=100, patience=20, save_dir=""):
+    def train_model(self, X, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=0, patience=20, save_dir=""):
         """
         Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
 
@@ -183,10 +187,6 @@ class scDHMap(nn.Module):
         -----------
         X: array_like, shape (n_samples, n_features)
             The normalized raw counts
-        X_raw: array_like, shape (n_samples, n_features)
-            The raw counts, which need for the ZINB loss
-        size_factor: array_like, shape (n_samples)
-            The size factor of each sample, which need for the ZINB loss
         X_pca: array_like, shape (n_samples, n_PCs)
             The principal components of the analytic Pearson residual normalized raw counts
         X_true_pca: array_like, shape (n_samples, n_PCs)
@@ -206,8 +206,6 @@ class scDHMap(nn.Module):
 
         self.to(self.device)
         X = torch.tensor(X)
-        X_raw = torch.tensor(X_raw)
-        size_factor = torch.tensor(size_factor)
         num = X.shape[0]
         sample_indices = np.arange(num)
         num_batch = int(math.ceil(1.0*num/self.batch_size))
@@ -231,11 +229,7 @@ class scDHMap(nn.Module):
                 batch_indices = sample_indices[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
 
                 x_batch = X[batch_indices]
-                x_raw_batch = X_raw[batch_indices]
-                sf_batch = size_factor[batch_indices]
                 x_tensor = Variable(x_batch).to(self.device)
-                x_raw_tensor = Variable(x_raw_batch).to(self.device)
-                sf_tensor = Variable(sf_batch).to(self.device)
 
                 dist_X_pca_batch = dist_X_pca[batch_indices][:, batch_indices]
                 dist_X_pca_tensor = torch.tensor(dist_X_pca_batch)
