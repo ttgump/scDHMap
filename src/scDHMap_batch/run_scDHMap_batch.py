@@ -138,6 +138,6 @@ if __name__ == "__main__":
     final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device)).data.cpu().numpy()
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")
 
-    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device)).data.cpu().numpy()
     np.savetxt(args.final_mean_file, final_mean, delimiter=",")
 
