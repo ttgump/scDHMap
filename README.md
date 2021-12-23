@@ -21,3 +21,5 @@ Pandas: 1.2.5
 h5py: 3.2.1
 
 Optional: harmonypy (https://github.com/slowkow/harmonypy)
+
+The real single cell datasets used in this study can be found: https://figshare.com/s/64694120e3d2b87e21c3
