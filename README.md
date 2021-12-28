@@ -1,6 +1,6 @@
 # scDHMap
 
-Understanding the developmental process is a critical step in single-cell analysis. This repo proposes scDHMap, a model-based deep learning approach to visualize the complex hierarchical structures of scRNA-seq data in low dimensional hyperbolic space. ScDHMap can be used for versatile dimensionality reduction tasks including revealing trajectory branches, batch correction, and denoising highly dropout counts.
+Understanding the developmental process is a critical step in single-cell analysis. This repo proposes scDHMap, a model-based deep learning approach to visualize the complex hierarchical structures of single-cell sequencing data in low dimensional hyperbolic space. ScDHMap can be used for versatile dimensionality reduction tasks including revealing trajectory branches, batch correction, and denoising highly dropout counts.
 
 Requirements:
 
