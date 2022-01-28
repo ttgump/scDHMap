@@ -65,7 +65,6 @@ if __name__ == "__main__":
 
     importantGenes = geneSelection(x, n=args.select_genes, plot=False)
     x = x[:, importantGenes]
-    x_true = x_true[:, importantGenes]
 
     # Preprocessing scRNA-seq read counts matrix for the autoencoder
     adata0 = sc.AnnData(x)

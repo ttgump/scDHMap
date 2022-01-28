@@ -96,6 +96,6 @@ if __name__ == "__main__":
     print('Training time: %d seconds.' % int(time() - t0))
 
     final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
-    QM_ae = get_quality_metrics(X_true_pca, final_latent, distance='P')
+    QM_ae = get_quality_metrics(X_pca, final_latent, distance='P')
 
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")
