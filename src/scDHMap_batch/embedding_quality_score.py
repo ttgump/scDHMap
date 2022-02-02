@@ -117,7 +117,7 @@ def get_score(Rank_high, Rank_low, fname=None):
 
     # print(df_score.mean()[['Qnx', 'Bnx']])
     Qlocal, Q_global, Kmax = get_scalars(df_score['Qnx'].values)
-    print(f"Qlocal = {Qlocal:.2f}, Q_global = {Q_global:.2f}, Kmax = {Kmax}")
+    print(f"Qlocal = {Qlocal:.2f}, Qglobal = {Q_global:.2f}, Kmax = {Kmax}")
     print(f"Time = {(timeit.default_timer() - start):.2f} sec")
     return df_score
 
