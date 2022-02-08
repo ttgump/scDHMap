@@ -307,14 +307,13 @@ class scDHMap(nn.Module):
 
         perplexity = np.array(self.perplexity).astype(np.double)
 
-        dist_X_pca = pairwise_distances(X_pca, metric="euclidean").astype(np.double)
+#        dist_X_pca = pairwise_distances(X_pca, metric="euclidean").astype(np.double)
 
         print("Training...")
 
         early_stopping = EarlyStopping(patience=patience, outdir=save_dir)
 
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
-        loss_norm_val_vec = []
 
         for epoch in range(maxiter):
             loss_zinb_val = 0
@@ -332,7 +331,8 @@ class scDHMap(nn.Module):
                 x_raw_tensor = Variable(x_raw_batch).to(self.device)
                 sf_tensor = Variable(sf_batch).to(self.device)
 
-                dist_X_pca_batch = dist_X_pca[batch_indices][:, batch_indices]
+#                dist_X_pca_batch = dist_X_pca[batch_indices][:, batch_indices]
+                dist_X_pca_batch = pairwise_distances(X_pca[batch_indices], metric="euclidean").astype(np.double)
                 dist_X_pca_tensor = torch.tensor(dist_X_pca_batch)
                 dist_X_pca_tensor = Variable(dist_X_pca_tensor).to(self.device)
                 p_batch = compute_gaussian_perplexity(dist_X_pca_batch, perplexities=perplexity)
