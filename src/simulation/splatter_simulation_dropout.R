@@ -5,7 +5,7 @@ library(splatter)
 library(scater)
 library(dplyr)
 
-# droput_mid is set one of c(1.5, 2, 2.5, 3)
+# droput_mid is set to one of c(1.5, 2, 2.5, 3)
 dropout_mid = 1.5
 
 all.dropout.rate <- c()
