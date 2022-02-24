@@ -347,8 +347,6 @@ class scDHMap(nn.Module):
 
 #                dist_X_pca_batch = dist_X_pca[batch_indices][:, batch_indices]
                 dist_X_pca_batch = pairwise_distances(X_pca[batch_indices], metric="euclidean").astype(np.double)
-                dist_X_pca_tensor = torch.tensor(dist_X_pca_batch)
-                dist_X_pca_tensor = Variable(dist_X_pca_tensor).to(self.device)
                 p_batch = compute_gaussian_perplexity(dist_X_pca_batch, perplexities=perplexity)
                 p_batch = torch.tensor(p_batch)
                 p_tensor = Variable(p_batch).to(self.device)

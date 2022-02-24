@@ -81,7 +81,6 @@ if __name__ == "__main__":
 
     adata = read_dataset(adata0,
                      transpose=False,
-                     test_split=False,
                      copy=True)
 
     adata = normalize(adata,
