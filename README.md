@@ -4,22 +4,14 @@ Understanding the developmental process is a critical step in single-cell analys
 
 **Requirements**
 
-Python: 3.9.5
-
-PyTorch: 1.9.1
-
-Scanpy: 1.7.2
-
-Numpy: 1.21.2
-
-sklearn: 0.24.2
-
-Scipy: 1.6.3
-
-Pandas: 1.2.5
-
-h5py: 3.2.1
-
+Python: 3.9.5<br/>
+PyTorch: 1.9.1<br/>
+Scanpy: 1.7.2<br/>
+Numpy: 1.21.2<br/>
+sklearn: 0.24.2<br/>
+Scipy: 1.6.3<br/>
+Pandas: 1.2.5<br/>
+h5py: 3.2.1<br/>
 Optional: harmonypy (https://github.com/slowkow/harmonypy)
 
 **Usage**
