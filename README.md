@@ -26,15 +26,15 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 
 **Parameters**
 
---batch_size: batch size, default = 512<br/>
---data_file: data file name<br/>
---select_genes: number of selected genes for embedding analysis<br/>
---n_PCA: number of principle components for the t-SNE part<br/>
---pretrain_iter: number of pretraining iterations<br/>
---maxiter: number of max iterations during training stage<br/>
---patience: patience in training stage<br/>
---lr: learning rate in the Adam optimizer<br/>
---alpha: coefficient of the t-SNE regularization<br/>
---beta: coefficient of the wrapped normal KLD loss<br/>
---prob: dropout probability in encoder and decoder layers<br/>
---perplexity: perplexity of the t-SNE regularization
+--batch_size: batch size, default = 512.<br/>
+--data_file: data file name.<br/>
+--select_genes: number of selected genes for embedding analysis, default = 1000.<br/>
+--n_PCA: number of principle components for the t-SNE part, default = 50.<br/>
+--pretrain_iter: number of pretraining iterations, default = 400.<br/>
+--maxiter: number of max iterations during training stage, default = 5000.<br/>
+--patience: patience in training stage, default = 150.<br/>
+--lr: learning rate in the Adam optimizer, default = 0.001.<br/>
+--alpha: coefficient of the t-SNE regularization, default = 1000. The choice of alpha is to balance the number of genes in the ZINB reconstruction loss.<br/>
+--beta: coefficient of the wrapped normal KLD loss, default = 10. If points in the embedding are all stacked near the boundary of the Poincare disk, you may choose a larger beta value.<br/>
+--prob: dropout probability in encoder and decoder layers, default = 0.<br/>
+--perplexity: perplexity of the t-SNE regularization, default = 30.
