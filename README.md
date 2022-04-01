@@ -37,4 +37,6 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 --alpha: coefficient of the t-SNE regularization, default = 1000. The choice of alpha is to balance the number of genes in the ZINB reconstruction loss.<br/>
 --beta: coefficient of the wrapped normal KLD loss, default = 10. If points in the embedding are all stacked near the boundary of the Poincare disk, you may choose a larger beta value.<br/>
 --prob: dropout probability in encoder and decoder layers, default = 0.<br/>
---perplexity: perplexity of the t-SNE regularization, default = 30.
+--perplexity: perplexity of the t-SNE regularization, default = 30.<br/>
+--final_latent_file: file name to output final latent Poincare representations, default = final_latent.txt.<br/>
+--final_mean_file: file name to output denoised counts, default = denoised_mean.txt.<br/>
