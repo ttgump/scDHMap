@@ -2,6 +2,8 @@
 
 Understanding the developmental process is a critical step in single-cell analysis. This repo proposes scDHMap, a model-based deep learning approach to visualize the complex hierarchical structures of single-cell sequencing data in a low dimensional hyperbolic space. ScDHMap can be used for various dimensionality reduction tasks including revealing trajectory branches, batch correction, and denoising highly dropout counts.
 
+![alt text](https://github.com/ttgump/scDHMap/blob/main/network.png?raw=True)
+
 **Requirements**
 
 Python: 3.9.5<br/>
