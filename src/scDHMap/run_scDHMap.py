@@ -94,6 +94,8 @@ if __name__ == "__main__":
     print(X_pca.shape)
 
     # Build the model
+    # encoderLayer and decoderLayer set the hidden layer sizes in encoder and decoder
+    # z_dim sets the dimension of the latent embedding
     model = scDHMap(input_dim=adata.n_vars, encodeLayer=[128, 64, 32, 16], decodeLayer=[16, 32, 64, 128], 
             batch_size=args.batch_size, activation="elu", z_dim=2, alpha=args.alpha, beta=args.beta, 
             perplexity=args.perplexity, prob=args.prob, likelihood_type=args.likelihood_type, device=args.device).to(args.device)
