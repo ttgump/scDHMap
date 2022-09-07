@@ -35,6 +35,7 @@ if __name__ == "__main__":
     parser.add_argument('--minimum_iter', default=0, type=int)
     parser.add_argument('--patience', default=150, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('--likelihood_type', default="zinb", help='must be zinb or nb')
     parser.add_argument('--alpha', default=1000., type=float,
                         help='coefficient of the t-SNE loss')
     parser.add_argument('--beta', default=10., type=float,
@@ -61,10 +62,12 @@ if __name__ == "__main__":
     # X is an array of the shape n_samples by n_features
     data_mat = h5py.File(args.data_file, 'r')
     x = np.array(data_mat['X'])
+    x_true = np.array(data_mat['X_true'])
     data_mat.close()
 
     importantGenes = geneSelection(x, n=args.select_genes, plot=False)
     x = x[:, importantGenes]
+    x_true = x_true[:, importantGenes]
 
     # Preprocessing scRNA-seq read counts matrix for the autoencoder
     adata0 = sc.AnnData(x)
@@ -82,6 +85,9 @@ if __name__ == "__main__":
     X_normalized = pearson_residuals(x, theta=100)
     X_pca = PCA(n_components=args.n_PCA, svd_solver='full').fit_transform(X_normalized)
 
+    X_true_normalized = pearson_residuals(x_true, theta=100)
+    X_true_pca = PCA(n_components=args.n_PCA, svd_solver='full').fit_transform(X_true_normalized)
+
     print(args)
 
     print(x.shape)
@@ -90,7 +96,7 @@ if __name__ == "__main__":
     # Build the model
     model = scDHMap(input_dim=adata.n_vars, encodeLayer=[128, 64, 32, 16], decodeLayer=[16, 32, 64, 128], 
             batch_size=args.batch_size, activation="elu", z_dim=2, alpha=args.alpha, beta=args.beta, 
-            perplexity=args.perplexity, prob=args.prob, device=args.device).to(args.device)
+            perplexity=args.perplexity, prob=args.prob, likelihood_type=args.likelihood_type, device=args.device).to(args.device)
 
     print(str(model))
 
@@ -110,17 +116,19 @@ if __name__ == "__main__":
             raise ValueError
 
     print('Pretraining time: %d seconds.' % int(time() - t0))
-    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device))
     np.savetxt(args.pretrain_latent_file, ae_latent, delimiter=",")
 
     # Train the model with the hyberbolic t-SNE regularization
-    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), None,
+    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), X_true_pca,
                     lr=args.lr, maxiter=args.maxiter, minimum_iter=args.minimum_iter,
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
 
-    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device))
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")
 
-    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device))
     np.savetxt(args.final_mean_file, final_mean, delimiter=",")
+
+    QM_ae = get_quality_metrics(X_true_pca, final_latent, distance='P')

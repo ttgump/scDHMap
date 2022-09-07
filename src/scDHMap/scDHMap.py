@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import *
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
-from layers import ZINBLoss, MeanAct, DispAct
+from layers import NBLoss, ZINBLoss, MeanAct, DispAct
 from tsne_helper import compute_gaussian_perplexity
 from poincare_helper import *
 from lorentzian_helper import *
@@ -87,7 +87,7 @@ class EarlyStopping:
 class scDHMap(nn.Module):
     def __init__(self, input_dim, encodeLayer=[], decodeLayer=[], batch_size=512,
             activation="relu", z_dim=2, alpha=1., beta=1., perplexity=[30.], 
-            prob=0., device="cuda"):
+            prob=0., likelihood_type="zinb", device="cuda"):
         super(scDHMap, self).__init__()
         self.input_dim = input_dim
         self.z_dim = z_dim
@@ -97,6 +97,7 @@ class scDHMap(nn.Module):
         self.beta = beta
         self.perplexity = perplexity
         self.prob = prob
+        self.likelihood_type = likelihood_type
         self.encoder = buildNetwork([input_dim]+encodeLayer, type="encode", activation=activation, prob=prob)
         self.decoder = buildNetwork([z_dim+1]+decodeLayer, type="decode", activation=activation, prob=prob)
         self.enc_mu = nn.Linear(encodeLayer[-1], z_dim)
@@ -107,6 +108,7 @@ class scDHMap(nn.Module):
 
         self.device = device
 
+        self.nb_loss = NBLoss().to(self.device)
         self.zinb_loss = ZINBLoss().to(self.device)
     
     def save_model(self, path):
@@ -181,11 +183,11 @@ class scDHMap(nn.Module):
             inputs = Variable(xbatch)
             _, _, z, _, _, _ = self.aeForward(inputs)
             z = lorentz2poincare(z)
-            encoded.append(z.data)
+            encoded.append(z.data.cpu().detach())
 
         encoded = torch.cat(encoded, dim=0)
         self.train()
-        return encoded
+        return encoded.numpy()
 
     def decodeBatch(self, X):
         """
@@ -202,24 +204,24 @@ class scDHMap(nn.Module):
             xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
             inputs = Variable(xbatch)
             _, _, _, mean, _, _ = self.aeForward(inputs)
-            decoded.append(mean.data)
+            decoded.append(mean.data.cpu().detach())
 
         decoded = torch.cat(decoded, dim=0)
         self.train()
-        return decoded
+        return decoded.numpy()
 
     def pretrain_autoencoder(self, X, X_raw, size_factor, lr=0.001, pretrain_iter=400, ae_save=True, ae_weights="AE_weights.pth.tar"):
         """
-        Pretrain the model with the ZINB hyperbolic VAE only.
+        Pretrain the model with the ZINB/NB hyperbolic VAE only.
 
         Parameters:
         -----------
         X: array_like, shape (n_samples, n_features)
             The normalized raw counts
         X_raw: array_like, shape (n_samples, n_features)
-            The raw counts, which need for the ZINB loss
+            The raw counts, which need for the ZINB/NB loss
         size_factor: array_like, shape (n_samples)
-            The size factor of each sample, which need for the ZINB loss
+            The size factor of each sample, which need for the ZINB/NB loss
         lr: float, defalut = 0.001
             Learning rate for the opitimizer
         pretrain_iter: int, default = 400
@@ -239,7 +241,7 @@ class scDHMap(nn.Module):
 
         print("Pretraining stage")
         for epoch in range(pretrain_iter):
-            loss_zinb_val = 0
+            loss_reconn_val = 0
             loss_kld_val = 0
             loss_val = 0
             for batch_idx, (x_batch, x_raw_batch, sf_batch) in enumerate(dataloader):
@@ -247,21 +249,26 @@ class scDHMap(nn.Module):
                 x_raw_tensor = Variable(x_raw_batch).to(self.device)
                 sf_tensor = Variable(sf_batch).to(self.device)
                 q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
-                loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
+                if self.likelihood_type == "nb":
+                    loss_reconn = self.nb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, scale_factor=sf_tensor)
+                elif self.likelihood_type == "zinb":
+                    loss_reconn = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
+                else:
+                    raise Exception("The likelihood type must be one of 'zinb' or 'nb'")
                 loss_kld = self.KLD(q_z, z)
-                loss = loss_zinb + loss_kld
+                loss = loss_reconn + loss_kld
                 self.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                loss_zinb_val += loss_zinb.item() * len(x_batch)
+                loss_reconn_val += loss_reconn.item() * len(x_batch)
                 loss_kld_val += loss_kld.item() * len(x_batch)
                 loss_val += loss.item() * len(x_batch)
-            loss_zinb_val = loss_zinb_val/num
+            loss_reconn_val = loss_reconn_val/num
             loss_kld_val = loss_kld_val/num
             loss_val = loss_val/num
 
-            print('Pretraining epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_kld_val))
+            print('Pretraining epoch {}, Total loss:{:.8f}, reconn loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_reconn_val, loss_kld_val))
 
         if ae_save:
             torch.save({'ae_state_dict': self.state_dict(),
@@ -270,16 +277,16 @@ class scDHMap(nn.Module):
 
     def train_model(self, X, X_raw, size_factor, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=0, patience=150, save_dir=""):
         """
-        Train the model with the ZINB hyperbolic VAE and the hyberbolic t-SNE regularization.
+        Train the model with the ZINB/NB hyperbolic VAE and the hyberbolic t-SNE regularization.
 
         Parameters:
         -----------
         X: array_like, shape (n_samples, n_features)
             The normalized raw counts
         X_raw: array_like, shape (n_samples, n_features)
-            The raw counts, which need for the ZINB loss
+            The raw counts, which need for the ZINB/NB loss
         size_factor: array_like, shape (n_samples)
-            The size factor of each sample, which need for the ZINB loss
+            The size factor of each sample, which need for the ZINB/NB loss
         X_pca: array_like, shape (n_samples, n_PCs)
             The principal components of the analytic Pearson residual normalized raw counts
         X_true_pca: array_like, shape (n_samples, n_PCs)
@@ -316,7 +323,7 @@ class scDHMap(nn.Module):
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, self.parameters()), lr=lr, weight_decay=weight_decay, amsgrad=True)
 
         for epoch in range(maxiter):
-            loss_zinb_val = 0
+            loss_reconn_val = 0
             loss_tsne_val = 0
             loss_kld_val = 0
             loss_val = 0
@@ -339,30 +346,35 @@ class scDHMap(nn.Module):
 
                 q_z, z, z_mu, mean_tensor, disp_tensor, pi_tensor = self.aeForward(x_tensor)
 
-                loss_zinb = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
+                if self.likelihood_type == "nb":
+                    loss_reconn = self.nb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, scale_factor=sf_tensor)
+                elif self.likelihood_type == "zinb":
+                    loss_reconn = self.zinb_loss(x=x_raw_tensor, mean=mean_tensor, disp=disp_tensor, pi=pi_tensor, scale_factor=sf_tensor)
+                else:
+                    raise Exception("The likelihood type must be one of 'zinb' or 'nb'")
                 loss_tsne = self.tsne_repel(z_mu, p_tensor)
                 loss_kld = self.KLD(q_z, z)
 
-                loss = loss_zinb + self.alpha * loss_tsne + self.beta * loss_kld 
+                loss = loss_reconn + self.alpha * loss_tsne + self.beta * loss_kld 
 
                 self.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                loss_zinb_val += loss_zinb.item() * len(x_batch)
+                loss_reconn_val += loss_reconn.item() * len(x_batch)
                 loss_tsne_val += loss_tsne.item() * len(x_batch)
                 loss_kld_val += loss_kld.item() * len(x_batch)
                 loss_val += loss.item() * len(x_batch)
 
-            loss_zinb_val = loss_zinb_val/num
+            loss_reconn_val = loss_reconn_val/num
             loss_tsne_val = loss_tsne_val/num
             loss_kld_val = loss_kld_val/num
             loss_val = loss_val/num
 
-            print('Training epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_tsne_val, loss_kld_val))
+            print('Training epoch {}, Total loss:{:.8f}, reconn loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_reconn_val, loss_tsne_val, loss_kld_val))
 
             if X_true_pca is not None and epoch > 0 and epoch % 40 == 0:
-                epoch_latent = self.encodeBatch(X.to(self.device)).data.cpu().numpy()
+                epoch_latent = self.encodeBatch(X.to(self.device))
                 QM_ae = get_quality_metrics(X_true_pca, epoch_latent, distance='P')
 
             if epoch+1 >= minimum_iter:
