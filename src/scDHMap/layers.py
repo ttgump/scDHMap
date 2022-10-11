@@ -13,10 +13,11 @@ class ZINBLoss(nn.Module):
     def __init__(self):
         super(ZINBLoss, self).__init__()
 
-    def forward(self, x, mean, disp, pi, scale_factor=1.0, ridge_lambda=0.0):
+    def forward(self, x, mean, disp, pi, scale_factor=None, ridge_lambda=0.0):
         eps = 1e-10
-        scale_factor = scale_factor[:, None]
-        mean = mean * scale_factor
+        if scale_factor is not None:
+            scale_factor = scale_factor[:, None]
+            mean = mean * scale_factor
         
         t1 = torch.lgamma(disp+eps) + torch.lgamma(x+1.0) - torch.lgamma(x+disp+eps)
         t2 = (disp+x) * torch.log(1.0 + (mean/(disp+eps))) + (x * (torch.log(disp+eps) - torch.log(mean+eps)))
@@ -32,6 +33,22 @@ class ZINBLoss(nn.Module):
             result += ridge
 
         result = torch.mean(torch.sum(result, dim=1))
+        return result
+
+class NBLoss(nn.Module):
+    def __init__(self):
+        super(NBLoss, self).__init__()
+
+    def forward(self, x, mean, disp, scale_factor=None):
+        eps = 1e-10
+        if scale_factor is not None:
+            scale_factor = scale_factor[:, None]
+            mean = mean * scale_factor
+
+        t1 = torch.lgamma(disp+eps) + torch.lgamma(x+1.0) - torch.lgamma(x+disp+eps)
+        t2 = (disp+x) * torch.log(1.0 + (mean/(disp+eps))) + (x * (torch.log(disp+eps) - torch.log(mean+eps)))
+        log_nb = t1 + t2
+        result = torch.mean(torch.sum(log_nb, dim=1))
         return result
 
 class MeanAct(nn.Module):

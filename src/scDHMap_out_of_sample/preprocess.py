@@ -89,7 +89,7 @@ def normalize_testing(adata, training_median_n_counts, training_mean, training_s
         adata.raw = adata
 
     if size_factors:
-        sc.pp.normalize_per_cell(adata)
+        sc.pp.normalize_per_cell(adata, counts_per_cell_after=training_median_n_counts)
         adata.obs['size_factors'] = adata.obs.n_counts / training_median_n_counts
     else:
         adata.obs['size_factors'] = 1.0

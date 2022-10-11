@@ -17,13 +17,14 @@ for(i in 1:10) {
     dropout_shape = -1,
     de_prob = 0.2,
     de_facScale = 0.3,
+    batch_facScale = 0.15,
     seed=99+i
   ) {
     list(
       platform_id = "simple",
       estimate = splatter::newSplatParams(nGenes = n_features, batchCells = c(0.05, 0.1, 0.15, 0.2, 0.25, 0.25)*n_cells,
                                           dropout.type = "experiment", dropout.mid = dropout_mid, dropout.shape = dropout_shape, 
-                                          de.prob = de_prob, de.facLoc = de_facScale, seed=seed),
+                                          de.prob = de_prob, de.facLoc = de_facScale, batch.facScale=batch_facScale, seed=seed),
       num_cells = n_cells,
       num_features = n_features,
       pct_main_features = pct_main_features
