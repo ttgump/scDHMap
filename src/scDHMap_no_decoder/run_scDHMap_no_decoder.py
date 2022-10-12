@@ -94,7 +94,7 @@ if __name__ == "__main__":
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
 
-    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device))
     QM_ae = get_quality_metrics(X_pca, final_latent, distance='P')
 
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")

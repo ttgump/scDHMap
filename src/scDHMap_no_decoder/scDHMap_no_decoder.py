@@ -173,11 +173,11 @@ class scDHMap(nn.Module):
             inputs = Variable(xbatch)
             _, _, z = self.aeForward(inputs)
             z = lorentz2poincare(z)
-            encoded.append(z.data)
+            encoded.append(z.data.cpu().detach())
 
         encoded = torch.cat(encoded, dim=0)
         self.train()
-        return encoded
+        return encoded.numpy()
 
     def train_model(self, X, X_pca, X_true_pca=None, lr=0.001, maxiter=5000, minimum_iter=0, patience=20, save_dir=""):
         """
@@ -259,7 +259,7 @@ class scDHMap(nn.Module):
             print('Training epoch {}, Total loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_tsne_val, loss_kld_val))
 
             if X_true_pca is not None and epoch > 0 and epoch % 40 == 0:
-                epoch_latent = self.encodeBatch(X.to(self.device)).data.cpu().numpy()
+                epoch_latent = self.encodeBatch(X.to(self.device))
                 QM_ae = get_quality_metrics(X_true_pca, epoch_latent, distance='P')
 
             if epoch+1 >= minimum_iter:

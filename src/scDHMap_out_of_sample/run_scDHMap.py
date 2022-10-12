@@ -142,13 +142,13 @@ if __name__ == "__main__":
             raise ValueError
 
     print('Pretraining time: %d seconds.' % int(time() - t0))
-    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device))
     QM_ae = get_quality_metrics(X_true_train_pca, ae_latent, distance='P')
 
     np.savetxt(args.pretrain_latent_file, ae_latent, delimiter=",")
 
     print('Pretraining testing Q')
-    ae_test_latent = model.encodeBatch(torch.tensor(adata_test.X).double().to(args.device)).data.cpu().numpy()
+    ae_test_latent = model.encodeBatch(torch.tensor(adata_test.X).double().to(args.device))
     QM_ae_test = get_quality_metrics(X_true_test_pca, ae_test_latent, distance='P')
 
     np.savetxt(args.pretrain_test_latent_file, ae_test_latent, delimiter=",")
@@ -159,14 +159,14 @@ if __name__ == "__main__":
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
 
-    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device)).data.cpu().numpy()
+    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device))
     QM_ae = get_quality_metrics(X_true_train_pca, final_latent, distance='P')
 
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")
 
 
     print('Final testing Q')
-    final_test_latent = model.encodeBatch(torch.tensor(adata_test.X).double().to(args.device)).data.cpu().numpy()
+    final_test_latent = model.encodeBatch(torch.tensor(adata_test.X).double().to(args.device))
     QM_ae_test = get_quality_metrics(X_true_test_pca, final_test_latent, distance='P')
 
     np.savetxt(args.final_test_latent_file, final_test_latent, delimiter=",")

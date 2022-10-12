@@ -181,11 +181,11 @@ class scDHMap(nn.Module):
             inputs = Variable(xbatch)
             _, _, z, _, _, _ = self.aeForward(inputs)
             z = lorentz2poincare(z)
-            encoded.append(z.data)
+            encoded.append(z.data.cpu().detach())
 
         encoded = torch.cat(encoded, dim=0)
         self.train()
-        return encoded
+        return encoded.numpy()
 
     def decodeBatch(self, X):
         """
@@ -202,11 +202,11 @@ class scDHMap(nn.Module):
             xbatch = X[batch_idx*self.batch_size : min((batch_idx+1)*self.batch_size, num)]
             inputs = Variable(xbatch)
             _, _, _, mean, _, _ = self.aeForward(inputs)
-            decoded.append(mean.data)
+            decoded.append(mean.data.cpu().detach())
 
         decoded = torch.cat(decoded, dim=0)
         self.train()
-        return decoded
+        return decoded.numpy()
 
     def pretrain_autoencoder(self, X, X_raw, size_factor, lr=0.001, pretrain_iter=400, ae_save=True, ae_weights="AE_weights.pth.tar"):
         """
@@ -362,7 +362,7 @@ class scDHMap(nn.Module):
             print('Training epoch {}, Total loss:{:.8f}, ZINB loss:{:.8f}, t-SNE loss:{:.8f}, KLD loss:{:.8f}'.format(epoch+1, loss_val, loss_zinb_val, loss_tsne_val, loss_kld_val))
 
             if X_true_pca is not None and epoch > 0 and epoch % 40 == 0:
-                epoch_latent = self.encodeBatch(X.to(self.device)).data.cpu().numpy()
+                epoch_latent = self.encodeBatch(X.to(self.device))
                 QM_ae = get_quality_metrics(X_true_pca, epoch_latent, distance='P')
 
             if epoch+1 >= minimum_iter:

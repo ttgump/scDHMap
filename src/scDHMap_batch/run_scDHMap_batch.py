@@ -125,7 +125,7 @@ if __name__ == "__main__":
             raise ValueError
 
     print('Pretraining time: %d seconds.' % int(time() - t0))
-    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device)).data.cpu().numpy()
+    ae_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device))
     np.savetxt(args.pretrain_latent_file, ae_latent, delimiter=",")
 
     # Train the model with the hyberbolic t-SNE regularization
@@ -134,9 +134,9 @@ if __name__ == "__main__":
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
 
-    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device)).data.cpu().numpy()
+    final_latent = model.encodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device))
     np.savetxt(args.final_latent_file, final_latent, delimiter=",")
 
-    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device)).data.cpu().numpy()
+    final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device), torch.tensor(y, dtype=torch.float64).to(args.device))
     np.savetxt(args.final_mean_file, final_mean, delimiter=",")
 
