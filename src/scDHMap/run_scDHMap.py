@@ -62,12 +62,10 @@ if __name__ == "__main__":
     # X is an array of the shape n_samples by n_features
     data_mat = h5py.File(args.data_file, 'r')
     x = np.array(data_mat['X'])
-    x_true = np.array(data_mat['X_true'])
     data_mat.close()
 
     importantGenes = geneSelection(x, n=args.select_genes, plot=False)
     x = x[:, importantGenes]
-    x_true = x_true[:, importantGenes]
 
     # Preprocessing scRNA-seq read counts matrix for the autoencoder
     adata0 = sc.AnnData(x)
@@ -84,9 +82,6 @@ if __name__ == "__main__":
     # Analytic Pearson redisuals normalization and PCA
     X_normalized = pearson_residuals(x, theta=100)
     X_pca = PCA(n_components=args.n_PCA, svd_solver='full').fit_transform(X_normalized)
-
-    X_true_normalized = pearson_residuals(x_true, theta=100)
-    X_true_pca = PCA(n_components=args.n_PCA, svd_solver='full').fit_transform(X_true_normalized)
 
     print(args)
 
@@ -122,7 +117,7 @@ if __name__ == "__main__":
     np.savetxt(args.pretrain_latent_file, ae_latent, delimiter=",")
 
     # Train the model with the hyberbolic t-SNE regularization
-    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), X_true_pca,
+    model.train_model(adata.X.astype(np.float64), adata.raw.X.astype(np.float64), adata.obs.size_factors.astype(np.float64), X_pca.astype(np.float64), None,
                     lr=args.lr, maxiter=args.maxiter, minimum_iter=args.minimum_iter,
                     patience=args.patience, save_dir=args.save_dir)
     print('Training time: %d seconds.' % int(time() - t0))
@@ -132,5 +127,3 @@ if __name__ == "__main__":
 
     final_mean = model.decodeBatch(torch.tensor(adata.X).double().to(args.device))
     np.savetxt(args.final_mean_file, final_mean, delimiter=",")
-
-    QM_ae = get_quality_metrics(X_true_pca, final_latent, distance='P')
