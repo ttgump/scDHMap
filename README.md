@@ -44,4 +44,5 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 --final_mean_file: file name to output denoised counts, default = denoised_mean.txt.<br/>
 
 **Visualization demo of the Paul data (Credit: Joshua Ortiga)**
+
 https://hosua.github.io/scDHMap-visual/article/2022/11/09/paul-data-visualization.html
