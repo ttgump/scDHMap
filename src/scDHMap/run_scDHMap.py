@@ -40,6 +40,8 @@ if __name__ == "__main__":
                         help='coefficient of the t-SNE loss')
     parser.add_argument('--beta', default=10., type=float,
                         help='coefficient of the KLD loss')
+    parser.add_argument('--gamma', default=1., type=float,
+                        help='GAMMA coefficient of the Cauchy kernel')
     parser.add_argument('--prob', default=0., type=float,
                         help='dropout probability')
     parser.add_argument('--perplexity', nargs="+", default=[30.], type=float)
@@ -92,7 +94,7 @@ if __name__ == "__main__":
     # encoderLayer and decoderLayer set the hidden layer sizes in encoder and decoder
     # z_dim sets the dimension of the latent embedding
     model = scDHMap(input_dim=adata.n_vars, encodeLayer=[128, 64, 32, 16], decodeLayer=[16, 32, 64, 128], 
-            batch_size=args.batch_size, activation="elu", z_dim=2, alpha=args.alpha, beta=args.beta, 
+            batch_size=args.batch_size, activation="elu", z_dim=2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, 
             perplexity=args.perplexity, prob=args.prob, likelihood_type=args.likelihood_type, device=args.device).to(args.device)
 
     print(str(model))

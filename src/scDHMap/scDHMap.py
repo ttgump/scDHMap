@@ -86,7 +86,7 @@ class EarlyStopping:
 
 class scDHMap(nn.Module):
     def __init__(self, input_dim, encodeLayer=[], decodeLayer=[], batch_size=512,
-            activation="relu", z_dim=2, alpha=1., beta=1., perplexity=[30.], 
+            activation="relu", z_dim=2, alpha=1., beta=1., gamma=1., perplexity=[30.], 
             prob=0., likelihood_type="zinb", device="cuda"):
         super(scDHMap, self).__init__()
         self.input_dim = input_dim
@@ -95,6 +95,7 @@ class scDHMap(nn.Module):
         self.batch_size = batch_size
         self.alpha = alpha
         self.beta = beta
+        self.gamma = gamma          # If gamma = 1, the Cauchy kernel will reduce to the Student's t-kernel
         self.perplexity = perplexity
         self.prob = prob
         self.likelihood_type = likelihood_type
@@ -148,8 +149,10 @@ class scDHMap(nn.Module):
         n = z.size()[0]
 
         ### pairwise distances
-        num = lorentz_distance_mat(z, z)**2
-        num = torch.pow(1.0 + num, -1)
+#        num = lorentz_distance_mat(z, z)**2
+#        num = torch.pow(1.0 + num, -1)
+        num = (lorentz_distance_mat(z, z)/self.gamma)**2
+        num = 1/self.gamma/(1.0 + num)
         p = p / torch.unsqueeze(torch.sum(p, dim=1), 1)
 
         attraction = p * torch.log(num)
