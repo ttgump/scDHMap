@@ -44,6 +44,10 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 --final_latent_file: file name to output final latent Poincare representations, default = final_latent.txt.<br/>
 --final_mean_file: file name to output denoised counts, default = denoised_mean.txt.<br/>
 
+**Reference:**
+
+Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. Genome Research.
+
 **Visualization demo of the Paul data (Credit: Joshua Ortiga)**
 
 https://hosua.github.io/scDHMap-visual/article/2022/11/09/paul-data-visualization.html
