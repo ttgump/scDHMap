@@ -46,7 +46,7 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 
 **Reference:**
 
-Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. Genome Research.
+Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. Genome Research. https://doi.org/10.1101/gr.277068.122
 
 **Visualization demo of the Paul data (Credit: Joshua Ortiga)**
 
