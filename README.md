@@ -18,9 +18,12 @@ Optional: harmonypy (https://github.com/slowkow/harmonypy)
 
 **Usage**
 
+```sh
 python run_scDHMap.py --data_file data.h5
-
+```
+```sh
 python run_scDHMap_batch.py --data_file data.h5
+```
 
 The real single cell datasets used in this study can be found: https://figshare.com/s/64694120e3d2b87e21c3
 
