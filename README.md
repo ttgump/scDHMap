@@ -6,6 +6,7 @@ Understanding the developmental process is a critical step in single-cell analys
 - [Network diagram](#diagram)
 - [Requirements](#requirements)
 - [Usage](#usage)
+- [Parameters](#parameters)
 - [Reference](#reference)
 - [Visualization demo](#demo)
 - [Contact](#contact)
