@@ -32,7 +32,7 @@ For single-cell count data:
 python run_scDHMap.py --data_file data.h5
 ```
 
-For single-cell count data from multiple batches:
+For single-cell count data from multiple batches (requires harmonypy package):
 
 ```sh
 python run_scDHMap_batch.py --data_file data.h5
