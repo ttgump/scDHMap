@@ -60,7 +60,7 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 --final_mean_file: file name to output denoised counts, default = denoised_mean.txt.<br/>
 
 ## <a name="reference"></a>Reference
-Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. Genome Research. https://doi.org/10.1101/gr.277068.122
+Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. *Genome Research* 33 (2), 232-246. https://doi.org/10.1101/gr.277068.122
 
 ## <a name="demo"></a>Visualization demo
 Visualization demo of the Paul data (Credit: Joshua Ortiga)
