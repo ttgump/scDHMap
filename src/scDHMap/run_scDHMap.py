@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # setting the hyper parameters
     import argparse
-    parser = argparse.ArgumentParser(description='train',
+    parser = argparse.ArgumentParser(description='Single-cell deep hierarchical map: hyperbolic embedding of single-cell genomics data',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--batch_size', default=512, type=int)
     parser.add_argument('--data_file', default='Splatter_simulate_1.h5')
