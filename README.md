@@ -43,21 +43,21 @@ The real single cell datasets used in this study can be found: https://figshare.
 In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset with batches, batch IDs are one-hot encoded matrix and stored in "Y".
 
 ## <a name="parameters"></a>Parameters
---batch_size: batch size, default = 512.<br/>
---data_file: data file name.<br/>
---select_genes: number of selected genes for embedding analysis, default = 1000.<br/>
---n_PCA: number of principle components for the t-SNE part, default = 50.<br/>
---pretrain_iter: number of pretraining iterations, default = 400.<br/>
---maxiter: number of max iterations during training stage, default = 5000.<br/>
---patience: patience in training stage, default = 150.<br/>
---lr: learning rate in the Adam optimizer, default = 0.001.<br/>
---alpha: coefficient of the t-SNE regularization, default = 1000. The choice of alpha is to balance the number of genes in the ZINB reconstruction loss.<br/>
---beta: coefficient of the wrapped normal KLD loss, default = 10. If points in the embedding are all stacked near the boundary of the Poincare disk, you may choose a larger beta value.<br/>
---gamma: coefficient of the Cauchy kernel, default = 1. Larger gamma means greater repulsive force between non-neighboring points. Please note that larger gamma values will push points to the boundary of the Poincare ball. If wanting to visualize better, user can choose larger beta values for using larger gamma values. In our experience, the KLD loss value < 10 during training t-SNE loss step will result to nice visualization. See the effect of different gamma's in Supplementary Figure S23 in the manuscript.<br/>
---prob: dropout probability in encoder and decoder layers, default = 0.<br/>
---perplexity: perplexity of the t-SNE regularization, default = 30.<br/>
---final_latent_file: file name to output final latent Poincare representations, default = final_latent.txt.<br/>
---final_mean_file: file name to output denoised counts, default = denoised_mean.txt.<br/>
+**--batch_size:** batch size, default = 512.<br/>
+**--data_file:** data file name.<br/>
+**--select_genes:** number of selected genes for embedding analysis, default = 1000. It will use the mean-variance relationship to select informative genes.<br/>
+**--n_PCA:** number of principle components for the t-SNE part, default = 50.<br/>
+**--pretrain_iter:** number of pretraining iterations, default = 400.<br/>
+**--maxiter:** number of max iterations during training stage, default = 5000.<br/>
+**--patience:** patience in training stage, default = 150.<br/>
+**--lr:** learning rate in the Adam optimizer, default = 0.001.<br/>
+**--alpha:** coefficient of the t-SNE regularization, default = 1000. The choice of alpha is to balance the number of genes in the ZINB reconstruction loss.<br/>
+**--beta:** coefficient of the wrapped normal KLD loss, default = 10. If points in the embedding are all stacked near the boundary of the Poincare disk, you may choose a larger beta value.<br/>
+**--gamma:** coefficient of the Cauchy kernel, default = 1. Larger gamma means greater repulsive force between non-neighboring points. Please note that larger gamma values will push points to the boundary of the Poincare ball. For better visualization, we recommend to choose larger beta values when using larger gamma values. In our experience, the KLD loss value < 10 during training stage step will result to nice visualization. See the effect of different gamma's in *Supplementary Figure S23* in our manuscript.<br/>
+**--prob:** dropout probability in encoder and decoder layers, default = 0.<br/>
+**--perplexity:** perplexity of the t-SNE regularization, default = 30.<br/>
+**--final_latent_file:** file name to output final latent Poincare representations, default = final_latent.txt.<br/>
+**--final_mean_file:** file name to output denoised counts, default = denoised_mean.txt.<br/>
 
 ## <a name="reference"></a>Reference
 Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. *Genome Research* 33 (2), 232-246. https://doi.org/10.1101/gr.277068.122
