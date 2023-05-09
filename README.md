@@ -7,6 +7,7 @@ Understanding the developmental process is a critical step in single-cell analys
 - [Requirements](#requirements)
 - [Usage](#usage)
 - [Parameters](#parameters)
+- [Folders](#folders)
 - [Reference](#reference)
 - [Visualization demo](#demo)
 - [Contact](#contact)
@@ -58,6 +59,13 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 **--perplexity:** perplexity of the t-SNE regularization, default = 30.<br/>
 **--final_latent_file:** file name to output final latent Poincare representations, default = final_latent.txt.<br/>
 **--final_mean_file:** file name to output denoised counts, default = denoised_mean.txt.<br/>
+
+## <a name="folders"></a>Folders
+
+**[Paul_Analysis](https://github.com/ttgump/scDHMap/tree/main/Paul_Analysis)**: code for the analysis of Paul data, including isometric transformation and branch assignment.<br/>
+**[competing_methods](https://github.com/ttgump/scDHMap/tree/main/competing_methods)**: code for running competing methods.<br/>
+**[scATAC_seq_analysis](https://github.com/ttgump/scDHMap/tree/main/scATAC_seq_analysis)**: code for gene activity score in scATAC-seq data.<br/>
+**[src](https://github.com/ttgump/scDHMap/tree/main/src)**: source code of scDHMap model.<br/>
 
 ## <a name="reference"></a>Reference
 Tian T., Cheng Z., Xiang L., Zhi W., & Hakon H. (2023). Complex hierarchical structures in single-cell genomics data unveiled by deep hyperbolic manifold learning. *Genome Research* 33 (2), 232-246. https://doi.org/10.1101/gr.277068.122
