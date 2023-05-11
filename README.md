@@ -7,6 +7,7 @@ Understanding the developmental process is a critical step in single-cell analys
 - [Requirements](#requirements)
 - [Usage](#usage)
 - [Parameters](#parameters)
+- [Outputs](#outputs)
 - [Folders](#folders)
 - [Reference](#reference)
 - [Visualization demo](#demo)
@@ -59,6 +60,11 @@ In the data.h5 file, cell-by-gene count matrix is stored in "X". For dataset wit
 **--perplexity:** perplexity of the t-SNE regularization, default = 30.<br/>
 **--final_latent_file:** file name to output final latent Poincare representations, default = final_latent.txt.<br/>
 **--final_mean_file:** file name to output denoised counts, default = denoised_mean.txt.<br/>
+
+## <a name="outputs"></a>Outputs
+
+- **final_latent:** 2-dimensional embedding in Poincare space of single-cell data, shape (n_cells, 2).<br/>
+- **final_mean:** denoised (decoded) gene counts, shape (n_cells, n_genes).<br/>
 
 ## <a name="folders"></a>Folders
 
