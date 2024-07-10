@@ -82,4 +82,4 @@ Visualization demo of the Paul data (Credit: Joshua Ortiga)
 https://hosua.github.io/scDHMap-visual/article/2022/11/09/paul-data-visualization.html
 
 ## <a name="contact"></a>Contact
-Tian Tian tt72@njit.edu
+Tian Tian tiantianwhu@163.com
